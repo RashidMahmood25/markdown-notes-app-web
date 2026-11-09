@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Notes — Write, Preview &amp; Save</title>
+<style>
+  :root { --navy:#0B1F3A; --blue:#1769AA; --cyan:#20A4D8; --sky:#EAF6FC; --carbon:#111827; --slate:#64748B; --line:#dbe7f0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:var(--sky); color:var(--carbon); min-height:100vh; display:flex; flex-direction:column; }
+  header { background:var(--navy); color:#fff; padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  header h1 { font-size:20px; }
+  header p { color:#bcd7ea; font-size:13px; }
+  header .spacer { flex:1; }
+  header button { background:var(--cyan); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  header button:hover { background:var(--blue); }
+  main { flex:1; display:grid; grid-template-columns:250px 1fr 1fr; gap:0; min-height:0; }
+  aside { background:#fff; border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  aside h2 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--slate); padding:12px 14px 6px; }
+  #noteList { list-style:none; overflow-y:auto; flex:1; }
+  #noteList li { padding:10px 14px; border-bottom:1px solid #eef4f8; cursor:pointer; }
+  #noteList li:hover { background:var(--sky); }
+  #noteList li.active { background:var(--sky); border-left:4px solid var(--cyan); }
+  #noteList li .t { font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #noteList li .d { font-size:12px; color:var(--slate); }
+  .pane { display:flex; flex-direction:column; min-height:0; }
+  .pane h2 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--slate); padding:12px 14px 6px; background:#fff; border-bottom:1px solid var(--line); }
+  #editor { flex:1; border:0; outline:none; resize:none; padding:14px; font-family:ui-monospace,Consolas,monospace; font-size:14px; line-height:1.6; }
+  #preview { flex:1; overflow-y:auto; padding:16px 20px; background:#fff; line-height:1.65; }
+  #preview h1,#preview h2,#preview h3 { color:var(--navy); margin:14px 0 8px; }
+  #preview h1 { font-size:24px; border-bottom:2px solid var(--line); padding-bottom:6px; }
+  #preview h2 { font-size:20px; } #preview h3 { font-size:17px; }
+  #preview p { margin:8px 0; }
+  #preview ul,#preview ol { margin:8px 0 8px 22px; }
+  #preview code { background:#eef4f8; padding:2px 5px; border-radius:4px; font-size:13px; }
+  #preview pre { background:var(--navy); color:#eaf6fc; padding:12px; border-radius:8px; overflow-x:auto; margin:10px 0; }
+  #preview pre code { background:none; padding:0; color:inherit; }
+  #preview blockquote { border-left:4px solid var(--cyan); margin:10px 0; padding:4px 12px; color:var(--slate); }
+  #preview a { color:var(--blue); }
+  #preview hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
+  #preview table { border-collapse:collapse; margin:10px 0; }
+  #preview th,#preview td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  #preview th { background:var(--sky); }
+  .toolbar { display:flex; gap:8px; padding:10px 14px; background:#fff; border-top:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+  .toolbar button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  .toolbar button:hover { background:var(--sky); }
+  .toolbar button.danger { color:#b91c1c; border-color:#f3c2c2; }
+  .toolbar .hint { font-size:12px; color:var(--slate); margin-left:auto; }
+  #titleInput { border:1px solid var(--line); border-radius:8px; padding:7px 10px; font-size:14px; width:220px; }
+  footer { text-align:center; font-size:12px; color:var(--slate); padding:10px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } aside { max-height:180px; } #editor { min-height:220px; } #preview { min-height:220px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>📝 Markdown Notes</h1>
+  <p>Write in Markdown — live preview, auto-saved in your browser.</p>
+  <span class="spacer"></span>
+  <button id="newBtn">+ New Note</button>
+</header>
+<main>
+  <aside>
+    <h2>Your Notes</h2>
+    <ul id="noteList"></ul>
+  </aside>
+  <section class="pane">
+    <h2>Editor</h2>
+    <textarea id="editor" placeholder="# My note&#10;&#10;Write **bold**, *italic*, lists, links..."></textarea>
+  </section>
+  <section class="pane">
+    <h2>Preview</h2>
+    <div id="preview"></div>
+  </section>
+</main>
+<div class="toolbar">
+  <input id="titleInput" type="text" placeholder="Note title…" maxlength="80">
+  <button id="saveBtn">💾 Save</button>
+  <button id="exportBtn">⬇ Export .md</button>
+  <button id="deleteBtn" class="danger">🗑 Delete</button>
+  <span class="hint" id="status">Notes are saved in this browser (localStorage). Nothing is uploaded.</span>
+</div>
+<footer>Markdown Notes — a small practice project by Rashid Mahmood · <a href="https://github.com/RashidMahmood25">github.com/RashidMahmood25</a></footer>
+
+<script>
+"use strict";
+const KEY = "markdown-notes-app-v1";
+const editor = document.getElementById("editor");
+const preview = document.getElementById("preview");
+const noteList = document.getElementById("noteList");
+const titleInput = document.getElementById("titleInput");
+const statusEl = document.getElementById("status");
+
+const WELCOME = "# Welcome to Markdown Notes\n\nWrite on the left, see the **live preview** on the right.\n\n## What you can do\n\n- Create a new note with the **+ New Note** button\n- Your notes are saved automatically in this browser\n- Export any note as a `.md` file\n\n## Markdown cheat sheet\n\n- **bold** with `**text**`, *italic* with `*text*`\n- Lists with `- item` or `1. item`\n- Links: `[text](https://example.com)`\n- Code: `` `inline code` `` or a fenced block\n- Quote with `> text`\n\n> Tip: try editing this note — the preview updates as you type.\n";
+
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; }
+}
+function saveNotes() { localStorage.setItem(KEY, JSON.stringify(notes)); }
+
+let notes = loadNotes();
+if (!notes || !notes.length) {
+  notes = [{ id: Date.now(), title: "Welcome", body: WELCOME, updated: Date.now() }];
+  saveNotes();
+}
+let activeId = notes[0].id;
+
+function esc(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function inlineMd(text) {
+  let out = esc(text);
+  out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  out = out.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return out;
+}
+function renderMd(src) {
+  const lines = src.replace(/\r\n?/g, "\n").split("\n");
+  let html = "", i = 0, inCode = false, codeBuf = [];
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim().startsWith("```")) {
+      if (!inCode) { inCode = true; codeBuf = []; }
+      else { inCode = false; html += "<pre><code>" + esc(codeBuf.join("\n")) + "</code></pre>"; }
+      i++; continue;
+    }
+    if (inCode) { codeBuf.push(line); i++; continue; }
+    const t = line.trim();
+    if (t === "") { i++; continue; }
+    if (t === "---" || t === "***") { html += "<hr>"; i++; continue; }
+    const h = t.match(/^(#{1,3})\s+(.*)$/);
+    if (h) { const lvl = h[1].length; html += "<h" + lvl + ">" + inlineMd(h[2]) + "</h" + lvl + ">"; i++; continue; }
+    if (t.startsWith("&gt;") || t.startsWith(">")) { html += "<blockquote>" + inlineMd(t.replace(/^&gt; ?/, "").replace(/^> ?/, "")) + "</blockquote>"; i++; continue; }
+    if (/^[-*]\s+/.test(t)) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i].trim())) { items.push("<li>" + inlineMd(lines[i].trim().replace(/^[-*]\s+/, "")) + "</li>"); i++; }
+      html += "<ul>" + items.join("") + "</ul>"; continue;
+    }
+    if (/^\d+\.\s+/.test(t)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) { items.push("<li>" + inlineMd(lines[i].trim().replace(/^\d+\.\s+/, "")) + "</li>"); i++; }
+      html += "<ol>" + items.join("") + "</ol>"; continue;
+    }
+    if (t.startsWith("|") && t.endsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) { rows.push(lines[i].trim()); i++; }
+      const cells = r => r.slice(1, -1).split("|").map(c => c.trim());
+      let table = "<table>";
+      rows.forEach((r, idx) => {
+        if (/^[\s|:-]+$/.test(r)) return;
+        const tag = idx === 0 ? "th" : "td";
+        table += "<tr>" + cells(r).map(c => "<" + tag + ">" + inlineMd(c) + "</" + tag + ">").join("") + "</tr>";
+      });
+      html += table + "</table>"; continue;
+    }
+    html += "<p>" + inlineMd(t) + "</p>"; i++;
+  }
+  if (inCode) html += "<pre><code>" + esc(codeBuf.join("\n")) + "</code></pre>";
+  return html;
+}
+
+function renderList() {
+  const sorted = [...notes].sort((a, b) => b.updated - a.updated);
+  noteList.innerHTML = "";
+  sorted.forEach(n => {
+    const li = document.createElement("li");
+    if (n.id === activeId) li.className = "active";
+    const d = new Date(n.updated);
+    li.innerHTML = '<div class="t"></div><div class="d"></div>';
+    li.querySelector(".t").textContent = n.title || "Untitled";
+    li.querySelector(".d").textContent = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    li.addEventListener("click", () => { saveCurrent(); activeId = n.id; loadActive(); });
+    noteList.appendChild(li);
+  });
+}
+function activeNote() { return notes.find(n => n.id === activeId); }
+function loadActive() {
+  const n = activeNote();
+  titleInput.value = n.title;
+  editor.value = n.body;
+  preview.innerHTML = renderMd(n.body);
+  renderList();
+}
+function saveCurrent(silent) {
+  const n = activeNote();
+  if (!n) return;
+  n.title = titleInput.value.trim() || "Untitled";
+  n.body = editor.value;
+  n.updated = Date.now();
+  saveNotes();
+  if (!silent) statusEl.textContent = "Saved " + new Date().toLocaleTimeString() + " ✔";
+}
+function renderPreview() { preview.innerHTML = renderMd(editor.value); }
+
+editor.addEventListener("input", () => { renderPreview(); saveCurrent(true); });
+titleInput.addEventListener("input", () => saveCurrent(true));
+document.getElementById("saveBtn").addEventListener("click", () => { saveCurrent(); renderList(); });
+document.getElementById("newBtn").addEventListener("click", () => {
+  saveCurrent(true);
+  const n = { id: Date.now(), title: "New note", body: "# New note\n\nStart writing…\n", updated: Date.now() };
+  notes.push(n); activeId = n.id; saveNotes(); loadActive();
+  editor.focus();
+});
+document.getElementById("deleteBtn").addEventListener("click", () => {
+  if (notes.length <= 1) { statusEl.textContent = "Last note cannot be deleted — edit it instead."; return; }
+  if (!confirm("Delete this note?")) return;
+  notes = notes.filter(n => n.id !== activeId);
+  activeId = notes[0].id; saveNotes(); loadActive();
+  statusEl.textContent = "Note deleted.";
+});
+document.getElementById("exportBtn").addEventListener("click", () => {
+  saveCurrent(true);
+  const n = activeNote();
+  const blob = new Blob([n.body], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (n.title || "note").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").toLowerCase() + ".md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+loadActive();
+</script>
+</body>
+</html>
